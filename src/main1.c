@@ -84,62 +84,35 @@ int last_confirmed = -10000;
 // ==========================================
 // FUNCIÓN DE INTELIGENCIA ARTIFICIAL (TINYML)
 // ==========================================
-// --- PARÁMETROS DE NORMALIZACIÓN (StandardScaler) ---
-const float MEAN[6] = { -16.1055, -26.6548, -2.3789, -0.2714, -0.8376, -0.0224 };
-const float SCALE[6] = { 19.2247, 64.4807, 1.5870, 0.9046, 0.8238, 0.7013 };
-
-// --- PESOS DE LA RED NEURONAL (MLP 6x16x1) ---
-const float W1[6][16] = {
-  { 0.1005, 0.0856, 0.6605, -0.7203, -0.2224, -0.0135, -1.2523, -0.2904, 0.0680, 0.1245, -0.1647, 1.1203, 0.8577, -0.0706, -0.1024, -0.3120 },
-  { -0.2178, 0.1972, -0.3738, -0.8580, 0.0015, -0.3753, -0.7182, 0.5955, -0.2161, 0.7978, -0.1713, 0.5993, 0.0416, -0.5216, 0.0960, -0.5666 },
-  { -0.1949, 0.7366, 1.0411, 0.8586, -0.0325, -0.9485, 0.7134, 0.9259, -0.1951, 0.5593, -1.1333, 0.1446, -0.8594, -0.3096, 0.0773, 0.4955 },
-  { 0.3433, -0.1078, 0.4014, -0.1690, 0.4208, 0.9144, -0.3622, 0.6101, -0.6244, -0.2338, 0.4305, 0.5827, -0.3637, -0.2986, 0.5118, -0.4713 },
-  { -0.0293, 0.5112, -0.0128, 0.6052, -0.2666, 0.3584, 0.8254, -0.0957, -0.3026, 0.6392, 0.0615, 0.6399, -0.2876, -0.8668, 0.0362, -0.0049 },
-  { 0.2900, 0.2645, 0.0982, -1.2284, -0.3425, -0.2344, -0.5641, 1.0406, 0.1255, 0.4038, -0.0669, 0.3722, 0.5953, 0.8427, 0.5260, -0.5435 },
-};
-
-const float B1[16] = { -0.1824, -0.7239, -1.1549, -0.5496, -0.6594, 0.8073, -0.2201, -0.5239, 0.1773, -0.6372, 0.7031, 1.0927, 1.0579, 0.3988, -0.3916, -0.4388 };
-
-const float W2[16] = { 0.3669, 0.9272, 0.8416, 1.5238, 0.2668, -1.1108, 1.5706, 0.7900, 0.1095, 1.2316, -0.9644, -1.4620, -1.6371, -0.6675, 0.3478, 0.8825 };
-const float B2 = -1.0459;
-
-// Función de activación ReLU (si x<0 -> 0, si no x)
-float relu(float x) {
-    return (x > 0.0f) ? x : 0.0f;
-}
-
-// CLASIFICADOR RED NEURONAL
-int clasificar_latido(float *raw_coeffs) {
-    float hidden[16];
-    float output = 0.0f;
-
-    // 1. NORMALIZAR DATOS Y CAPA OCULTA
-    for (int j = 0; j < 16; j++) {
-        float sum = B1[j]; // Empezamos con el bias
-        for (int i = 0; i < 6; i++) {
-            // Normalizamos el dato de entrada antes de multiplicar
-            float norm_input = (raw_coeffs[i] - MEAN[i]) / SCALE[i];
-            sum += norm_input * W1[i][j];
-        }
-        hidden[j] = relu(sum); // Aplicamos ReLU
-    }
-
-    // 2. CAPA DE SALIDA
-    float sum_out = B2;
-    for (int j = 0; j < 16; j++) {
-        sum_out += hidden[j] * W2[j];
-    }
-
-    // Función Sigmoide simplificada: si sum_out > 0 es clase 1, si no 0
-    // (Matemáticamente sigmoid(0) = 0.5)
-    if (sum_out > 0.0f) {
-        return 1; // RUIDO / ARRITMIA
+int clasificar_latido(float *coeffs) {
+    // Nodo 0: El coeficiente 1 es el discriminador principal
+    if (coeffs[1] <= 1601.50) {
+        return 1; // RUIDO / ANOMALÍA
     } else {
-        return 0; // NORMAL
+        // Rama compleja para casos dudosos
+        if (coeffs[5] <= 215.50) {
+            if (coeffs[0] <= 9096.00) {
+                if (coeffs[4] <= 3929.50) {
+                    return 1; // RUIDO
+                } else {
+                    return 0; // NORMAL
+                }
+            } else {
+                return 1; // RUIDO
+            }
+        } else {
+            if (coeffs[5] <= 258.00) {
+                if (coeffs[5] <= 226.50) {
+                    return 1; // RUIDO
+                } else {
+                    return 0; // NORMAL
+                }
+            } else {
+                return 1; // RUIDO
+            }
+        }
     }
 }
-
-/* ============================================================ */
 
 /* ========================= FUNCIONES MATEMÁTICAS (HERMITE) ========================= */
 
@@ -306,12 +279,11 @@ int algoritmo(int16_t dato){
                         // Usamos printk para enviar por USB
                         printk("COEFFS");
                         for(int k=0; k<NUM_COEFFS; k++){
-                            // Multiplicamos por 1000 para ver 3 decimales
-                            // Ej: Si el coef es -15.432 -> imprime -15432
-                            printk(",%d", (int)(coeficientes[k] * 1000.0f));
+                            // Imprimimos como entero escalado x100 o float si zephyr config lo permite
+                            // Para seguridad en microcontroladores simples, a veces %f da problemas.
+                            // Si errores, cambiar a: (int)(coeficientes[k]*1000)
+                            printk(",%d", (int)(coeficientes[k])); 
                         }
-                        // Imprimimos también qué decidió la IA (0 o 1) para comprobar
-                        printk(",CLASE:%d\n", clase);
                         printk("\n");
                     }
                     // ==========================================================
@@ -330,39 +302,25 @@ int algoritmo(int16_t dato){
 }
 
 /* ========================= WORKER: LECTURA ADC ========================= */
-/* ========================= WORKER: LECTURA ADC ========================= */
 void adc_read_work(struct k_work *work)
 {
     int ret;
-    static int16_t last_sample = 0; // Para calcular la diferencia
-    
+    int lo_plus = gpio_pin_get(gpio_dev, LO_PLUS_PIN);
+    int lo_minus = gpio_pin_get(gpio_dev, LO_MINUS_PIN);
+
     ret = adc_read(adc_dev, &sequence);
     if (ret == 0) {
-        
-        // --- 1. DETECTOR DE MOVIMIENTO BRUSCO (El "Pánico") ---
-        int diff = abs((int)sample_buffer - (int)last_sample);
-        last_sample = sample_buffer;
-
-        // Si la señal cambia de golpe (ruido/movimiento), encendemos LED YA
-        if (diff > 300) { 
-            gpio_pin_set_dt(&led, 1); 
-            // printk("RUIDO_BRUSCO\n"); 
-        }
-
-        // --- 2. PROCESAMIENTO NORMAL DE LATIDOS ---
-        // Solo procesamos si hay alguien tocando el sensor (> 50)
+        // FILTRO DE RUIDO Y CABLE SUELTO
         if ((int)sample_buffer > 50) {
             int beat = algoritmo(sample_buffer);
             
-            // Si NO hay latido detectado, imprimimos la señal para verla en el gráfica
-            // (Si hay latido, ya imprime "COEFFS..." dentro de la función algoritmo)
+            // Opcional: Imprimir señal cruda para dibujar en Python a la vez
+            // Si imprimimos COEFFS arriba, aquí imprimimos la señal normal
             if (!beat){
-               // Imprimimos la señal cruda para el plotter
-               printk("%d\n", (int)sample_buffer); 
+               // Solo imprimimos señal si NO hay beat (para no solapar textos)
+               // Ojo: Esto es para debug gráfico.
+               printk("%d,0\n", (int)sample_buffer); 
             }
-        } else {
-            // Si sueltan el sensor, apagamos LED
-            gpio_pin_set_dt(&led, 0);
         }
     } 
 }
