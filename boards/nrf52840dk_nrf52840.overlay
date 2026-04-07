@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+/*
+ * Activación básica de LED y ADC para nRF52840 DK
+ */
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+    };
+};

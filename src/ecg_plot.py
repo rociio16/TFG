@@ -45,16 +45,13 @@ def serial_reader():
 
             # CASO 1: Recibimos los Coeficientes de Hermite (Latido Detectado)
             if line.startswith("COEFFS"):
-                # Formato esperado: COEFFS,100,200,-50,30,10,5
                 parts = line.split(',')
-                # Ignoramos la palabra 'COEFFS' y cogemos los números
                 if len(parts) > 1:
                     coeffs = parts[1:]
                     print(f"\n>>> ❤ LATIDO PROCESADO | Hermite: {coeffs}")
 
                     # --- DIBUJAR PUNTO ROJO ---
                     with data_lock:
-                        # Como el C ha detectado latido, buscamos el pico real en el pasado
                         buffer_list = list(y_data)
                         if len(buffer_list) > LOOKBACK:
                             segmento = buffer_list[-LOOKBACK:]
@@ -65,21 +62,20 @@ def serial_reader():
                             # Marcamos el punto rojo
                             y_beats[idx_correccion] = pico_real
 
-            # CASO 2: Recibimos señal normal (ej: "2048,0")
-            elif ',' in line:
-                parts = line.split(',')
+            # CASO 2: Recibimos señal normal (ej: "2048")
+            else:
                 try:
-                    val = int(parts[0])
-                    # El segundo numero suele ser 0, no lo necesitamos si no es COEFFS
+                    # Cogemos el número. Si por algún motivo tiene coma (ej: 2048,0), split lo arregla
+                    val = int(line.split(',')[0])
 
                     with data_lock:
                         y_data.append(val)
                         y_beats.append(np.nan)  # Nada de latido en este instante
                 except ValueError:
+                    # Si llega texto como ">>> NORMAL (Clase 0)" lo ignoramos en silencio
                     pass
 
         except Exception as e:
-            # A veces al cerrar da error, lo ignoramos
             pass
 
 
@@ -127,7 +123,7 @@ def update(frame):
 
 
 print("Abriendo ventana gráfica...")
-ani = animation.FuncAnimation(fig, update, interval=30, blit=False)
+ani = animation.FuncAnimation(fig, update, interval=30, blit=False, cache_frame_data=False)
 plt.show()
 running = False
 print("Cerrando conexión.")
