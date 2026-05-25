@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 # ================= CONFIGURACIÓN =================
-SERIAL_PORT = "COM7"  # <--- TU PUERTO ACTUAL
+SERIAL_PORT = "COM6"  # <--- PUERTO ACTUAL
 BAUDRATE = 115200
 SAMPLE_RATE = 360
 WINDOW_SECONDS = 5
@@ -29,11 +29,11 @@ running = True
 data_lock = threading.Lock()
 
 # ================= ARCHIVOS CSV =================
-f_senal = open('ecg_senal_cruda.csv', 'w', newline='')
+f_senal = open('ecg_signal_suj21_.csv', 'w', newline='')
 csv_senal = csv.writer(f_senal)
 csv_senal.writerow(['Tiempo(s)', 'Valor_ADC'])
 
-f_latidos = open('ecg_latidos_detectados.csv', 'w', newline='')
+f_latidos = open('ecg_latidos_suj21_.csv', 'w', newline='')
 csv_latidos = csv.writer(f_latidos)
 csv_latidos.writerow(['Tiempo(s)', 'Amplitud', 'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'Clase'])
 
@@ -55,7 +55,7 @@ def serial_reader():
         print(f"Error abriendo puerto: {e}")
         return
 
-    sample_count = 0  # <--- NUEVO: Contador infalible de muestras
+    sample_count = 0
 
     while running:
         try:

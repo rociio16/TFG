@@ -5,8 +5,8 @@ print("Cargando datos grabados...")
 
 try:
     # 1. Leer los archivos CSV
-    df_senal = pd.read_csv('ecg_senal_cruda.csv')
-    df_latidos = pd.read_csv('ecg_latidos_detectados.csv')
+    df_senal = pd.read_csv('ecg_signal_suj1.csv')
+    df_latidos = pd.read_csv('ecg_latidos_suj1.csv')
 
     # 2. Configurar la gráfica
     plt.figure(figsize=(15, 6))
